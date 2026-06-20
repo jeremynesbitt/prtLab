@@ -1,4 +1,4 @@
-function interaction = traceIsotropicToIsotropic(interaction, mediumIn, mediumOut, ray, hit, normal, options)
+function interaction = traceIsotropicToIsotropic(interaction, mediumIn, mediumOut, ray, hit, normal, ~)
 %TRACEISOTROPICTOISOTROPIC Trace an isotropic-to-isotropic interface.
 
 % arbitrary interface!
@@ -10,9 +10,10 @@ function interaction = traceIsotropicToIsotropic(interaction, mediumIn, mediumOu
 %% -------------------------------------------------------
 k_inc = interaction.incident.k;
 S_inc = interaction.incident.S;
-n1 = mediumIn.IndexData{1}.n;
+n1 = incidentIndexFromRay(ray, mediumIn);
 n2 = mediumOut.IndexData{1}.n;
 ada = interaction.normal;
+surfaceReflective = isReflectiveSurface(mediumIn.SurfaceData{1});
 
 % Use snell's law to calculate the exit fields.  Since this is birefringent
 % to isotropic there is no issue with treating the o and e waves separately
@@ -48,7 +49,7 @@ S_r = S_r/norm(S_r);
 %% -------------------------------------------------------
 % s-basis vectors - vectors transerse to the interface
 %% -------------------------------------------------------
-if (k_inc(1) == 0 && k_inc(2) == 0 && k_inc(3) == 1) % special case normal incidence
+if norm(cross(k_inc, ada)) < 100*eps(max(1, norm(k_inc)*norm(ada))) % special case normal incidence
     s1 = [1;0;0];
 else
     s1 = cross(k_inc, ada);
@@ -77,9 +78,15 @@ F = [ ...
 Cs = [ dot(s1,Einc_s); dot(s2,Einc_s); dot(s1,Hinc_s); dot(s2,Hinc_s) ];
 Cp = [ dot(s1,Einc_p); dot(s2,Einc_p); dot(s1,Hinc_p); dot(s2,Hinc_p) ];
 
-
-As = F\Cs;
-Ap = F\Cp ;
+if isNormalIncidence(k_inc, ada)
+    t = 2*n1/(n1 + n2);
+    r = (n1 - n2)/(n1 + n2);
+    As = [t; 0; r; 0];
+    Ap = [0; t; 0; r];
+else
+    As = F\Cs;
+    Ap = F\Cp ;
+end
 
 % Combine these 
 Uin = [Einc_s, Einc_p, S_inc];
@@ -127,13 +134,15 @@ child.O = Oout;
 child.localBasis = struct('s', sOut, 'p', pOut, 'basisDirection', k_out);
 child.amplitude = norm(child.fieldE);
 child.flux = real(dot(cross(child.fieldE, conj(child.fieldH)), ada));
+child.active = ~surfaceReflective && isPropagatingGeometricRay(child.k, child.S, n2);
 child.metadata = struct( ...
     'n', n2, ...
-    'P_interface', P_t);
+    'P_interface', P_t, ...
+    'isPropagating', child.active);
 
 children = child;
 
-if options.traceReflections
+if surfaceReflective
     reflected = makeChildTemplate(ray, hit, normal, mediumIn, "reflected");
     reflected.k = k_r;
     reflected.S = S_r;
@@ -153,7 +162,8 @@ if options.traceReflections
     reflected.flux = abs(real(dot(cross(reflected.fieldE, conj(reflected.fieldH)), ada)));
     reflected.metadata = struct( ...
         'n', nr, ...
-        'P_interface', P_r);
+        'P_interface', P_r, ...
+        'isPropagating', reflected.active);
     children = [children; reflected];
 end
 
@@ -203,6 +213,31 @@ interaction.diagnostics = struct( ...
     'Hr_s', Hr_s, ...
     'Hr_p', Hr_p);
 
+end
+
+function n = incidentIndexFromRay(ray, mediumIn)
+if isfield(ray.metadata, 'n') && ~isempty(ray.metadata.n)
+    n = ray.metadata.n;
+else
+    n = mediumIn.IndexData{1}.n;
+end
+end
+
+function tf = isPropagatingGeometricRay(k, S, n)
+tf = isreal(k) && isreal(S) && isreal(n);
+end
+
+function tf = isReflectiveSurface(surfaceData)
+tf = false;
+if isfield(surfaceData, 'isReflective')
+    tf = logical(surfaceData.isReflective);
+elseif isfield(surfaceData, 'isRelective')
+    tf = logical(surfaceData.isRelective);
+end
+end
+
+function tf = isNormalIncidence(k, normal)
+tf = norm(cross(k, normal)) < 100*eps(max(1, norm(k)*norm(normal)));
 end
 
 function [p, s] = interfaceSPBasis(k, normal, fallbackS)

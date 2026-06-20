@@ -98,8 +98,13 @@ plot(z, y, 'k-', 'LineWidth', 1.2);
 end
 
 function tf = isLensElementPair(T, surfaceIndex)
-tf = T.MaterialType(surfaceIndex+1) == "isotropic" && ...
-    T.IndexData{surfaceIndex+1}.n ~= 1;
+if T.MaterialType(surfaceIndex+1) ~= "isotropic"
+    tf = false;
+    return;
+end
+
+nNext = T.IndexData{surfaceIndex+1}.n;
+tf = isreal(nNext) && nNext ~= 1;
 end
 
 function tf = isPlanePair(T, surfaceIndex)

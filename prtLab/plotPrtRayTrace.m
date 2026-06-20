@@ -14,25 +14,34 @@ arguments
     options.PostExtend (1,1) double {mustBeNonnegative} = 0.5
     options.PlotIncomplete (1,1) logical = true
     options.IncompleteLineStyle (1,1) string = "--"
+    options.AutoExpandAxes (1,1) logical = true
+    options.AxisPaddingFraction (1,1) double {mustBeNonnegative} = 0.04
 end
 
 hold on;
 outputs = normalizeRayOutputs(rayOutputs);
 colors = normalizeColors(options.Color, numel(outputs));
+plottedPoints = zeros(0, 2);
 
 for outputIndex = 1:numel(outputs)
     rayOutput = outputs{outputIndex};
     finalRayIds = rayOutput.finalRayIds;
     if isempty(finalRayIds) && options.PlotIncomplete
-        plotIncompleteRay(rayOutput, colors(outputIndex,:), options.LineWidth, ...
+        points = plotIncompleteRay(rayOutput, colors(outputIndex,:), options.LineWidth, ...
             options.PreExtend, options.IncompleteLineStyle);
+        plottedPoints = [plottedPoints; points]; %#ok<AGROW>
     else
         for finalIndex = 1:numel(finalRayIds)
-            plotOneFinalRay(rayOutput, finalRayIds(finalIndex), ...
+            points = plotOneFinalRay(rayOutput, finalRayIds(finalIndex), ...
             colors(outputIndex,:), options.LineWidth, ...
             options.PreExtend, options.PostExtend);
+            plottedPoints = [plottedPoints; points]; %#ok<AGROW>
         end
     end
+end
+
+if options.AutoExpandAxes
+    expandAxesToPoints(plottedPoints, options.AxisPaddingFraction);
 end
 
 end
@@ -60,7 +69,7 @@ else
 end
 end
 
-function plotOneFinalRay(rayOutput, finalRayId, color, lineWidth, preExtend, postExtend)
+function points = plotOneFinalRay(rayOutput, finalRayId, color, lineWidth, preExtend, postExtend)
 history = rayOutput.rays(finalRayId).history;
 positions = zeros(numel(history), 3);
 for historyIndex = 1:numel(history)
@@ -83,9 +92,13 @@ finalDirection = finalRay.S(:).';
 postPoint = finalPoint + postExtend*finalDirection;
 plot([finalPoint(3), postPoint(3)], [finalPoint(2), postPoint(2)], ...
     '-', 'Color', color, 'LineWidth', lineWidth);
+
+points3 = [prePoint; positions; postPoint];
+points = points3(:,[3, 2]);
 end
 
-function plotIncompleteRay(rayOutput, color, lineWidth, preExtend, lineStyle)
+function points = plotIncompleteRay(rayOutput, color, lineWidth, preExtend, lineStyle)
+points = zeros(0, 2);
 if isempty(rayOutput.rays)
     return;
 end
@@ -106,4 +119,28 @@ plot([prePoint(3), initialPoint(3)], [prePoint(2), initialPoint(2)], ...
     lineStyle, 'Color', color, 'LineWidth', lineWidth);
 plot(positions(:,3), positions(:,2), ...
     lineStyle, 'Color', color, 'LineWidth', lineWidth);
+
+points3 = [prePoint; positions];
+points = points3(:,[3, 2]);
+end
+
+function expandAxesToPoints(points, paddingFraction)
+if isempty(points)
+    return;
+end
+
+ax = gca;
+currentXLim = xlim(ax);
+currentYLim = ylim(ax);
+
+newXLim = [min([currentXLim(1); points(:,1)]), ...
+           max([currentXLim(2); points(:,1)])];
+newYLim = [min([currentYLim(1); points(:,2)]), ...
+           max([currentYLim(2); points(:,2)])];
+
+xPadding = paddingFraction*max(eps, diff(newXLim));
+yPadding = paddingFraction*max(eps, diff(newYLim));
+
+xlim(ax, newXLim + [-xPadding, xPadding]);
+ylim(ax, newYLim + [-yPadding, yPadding]);
 end

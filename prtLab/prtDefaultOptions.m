@@ -6,7 +6,6 @@ if nargin < 1
 end
 
 options = struct();
-options.traceReflections = false;
 options.maxBranches = 256;
 options.minFlux = 0;
 options.minAmplitude = 0;

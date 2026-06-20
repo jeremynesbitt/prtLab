@@ -158,6 +158,9 @@ childIds = [];
 for ii = 1:numel(interaction.children)
     child = interaction.children(ii);
 
+    if ~child.active
+        continue;
+    end
     if child.flux < options.minFlux
         continue;
     end

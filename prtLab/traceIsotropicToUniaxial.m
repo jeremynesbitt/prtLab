@@ -39,8 +39,8 @@ nE = oStruct.nE;
 kinc = Rz*kinc;
 ada = Rz*interaction.normal;
 
-% Assume Input is air.  This is also not used and is a placeholder
-% TODO:  Support non air index for incident light.
+% We know incident medium is isotropic so can define epsilon using
+% identity matrix
 epsilon = nInc^2*eye(3,3);
 
 % Here assuming uniaxial with alpha paramterizing the crystal axis.
