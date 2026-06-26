@@ -35,6 +35,8 @@ for surfaceIndex = 1:height(T)-1
         end
 
         [hit, normal, interceptData] = intersectSurface(T(surfaceIndex,:), ray);
+        ray = propagateRayToHit(ray, hit, T);
+        rayTraceData.rays(rayId) = ray;
 
         interaction = traceSurfaceInteraction( ...
             T, surfaceIndex, ray, hit, normal, options);
@@ -176,6 +178,59 @@ for ii = 1:numel(interaction.children)
 end
 
 childResult = struct('rays', rays, 'ids', childIds);
+end
+
+function ray = propagateRayToHit(ray, hit, T)
+segment = hit - ray.position;
+phaseIndex = rayPhaseIndex(ray);
+segmentOPL = phaseIndex * dot(ray.k, segment);
+
+ray.OPL = ray.OPL + segmentOPL;
+ray.metadata.lastSegmentOPL = segmentOPL;
+if hasPropagationMatrix(ray)
+    phase = propagationPhase(segmentOPL, T);
+    ray.fieldE = phase * ray.fieldE;
+    ray.fieldH = phase * ray.fieldH;
+    ray.E = ray.fieldE;
+    ray.H = ray.fieldH;
+    ray = propagatePMatrix(ray, phase);
+    ray.metadata.lastSegmentPhase = phase;
+else
+    ray.metadata.lastSegmentPhase = [];
+end
+end
+
+function ray = propagatePMatrix(ray, phase)
+if hasPropagationMatrix(ray)
+    Popl = (ray.metadata.P_interface - ray.metadata.propagationProjector) * phase + ...
+        ray.metadata.propagationProjector;
+    ray.P = Popl * ray.metadata.P_beforePropagation;
+    ray.metadata.P_propagated = Popl;
+end
+end
+
+function tf = hasPropagationMatrix(ray)
+tf = isfield(ray.metadata, 'P_interface') && ...
+        isfield(ray.metadata, 'P_beforePropagation') && ...
+        isfield(ray.metadata, 'propagationProjector') && ...
+        ~isempty(ray.metadata.P_interface) && ...
+        ~isempty(ray.metadata.P_beforePropagation) && ...
+        ~isempty(ray.metadata.propagationProjector);
+end
+
+function phaseIndex = rayPhaseIndex(ray)
+if isfield(ray.metadata, 'phaseIndex') && ~isempty(ray.metadata.phaseIndex)
+    phaseIndex = ray.metadata.phaseIndex;
+elseif isfield(ray.metadata, 'n') && ~isempty(ray.metadata.n)
+    phaseIndex = ray.metadata.n;
+else
+    phaseIndex = 1;
+end
+end
+
+function phase = propagationPhase(segmentOPL, T)
+lambda = T.Properties.UserData.lambda;
+phase = exp(1i * 2*pi * segmentOPL / lambda);
 end
 
 function children = attachCurrentVertexZ(children, targetZ)

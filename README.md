@@ -1,6 +1,6 @@
 # prtLab 
 
-prtLab is a Matlab primary toolkit to do true Polarization Ray Tracing of simple object such as waveplates.  It not a commercial solution but is usable as a research tool.
+prtLab is a Matlab-primary toolkit to do true Polarization Ray Tracing of simple object such as waveplates.  It not a commercial solution but is usable as a research tool.
 
 # Polarization Ray Tracing
 
