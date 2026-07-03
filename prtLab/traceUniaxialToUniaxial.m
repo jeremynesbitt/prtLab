@@ -1,4 +1,4 @@
-function interaction = traceUniaxialToIsotropic(interaction, mediumIn, mediumOut, ray, hit, normal, options)
+function interaction = traceUniaxialToUniaxial(interaction, mediumIn, mediumOut, ray, hit, normal, options)
 %TRACEUNIAXIALTOISOTROPIC trace rays from uniaxial to isotropic materials
 %Based on PLAOS Section 19.7.3
 

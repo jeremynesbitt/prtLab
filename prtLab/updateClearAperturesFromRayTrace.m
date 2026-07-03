@@ -36,6 +36,7 @@ for outputIndex = 1:numel(outputs)
 end
 
 clearApertures = max(options.Margin * clearApertures, options.Minimum);
+clearApertures = sharePlanePairApertures(T, clearApertures);
 surfacesToUpdate = intersect(options.Surfaces(:).', 1:numSurfaces);
 
 for surfaceIndex = surfacesToUpdate
@@ -53,5 +54,20 @@ elseif numel(rayOutputs) > 1
     outputs = num2cell(rayOutputs);
 else
     outputs = {rayOutputs};
+end
+end
+
+function clearApertures = sharePlanePairApertures(T, clearApertures)
+numSurfaces = height(T) - 1;
+surfaceIndex = 1;
+while surfaceIndex < numSurfaces
+    if string(T.SurfaceType(surfaceIndex)) == "plane" && ...
+            string(T.SurfaceType(surfaceIndex+1)) == "plane"
+        pairAperture = max(clearApertures(surfaceIndex:surfaceIndex+1));
+        clearApertures(surfaceIndex:surfaceIndex+1) = pairAperture;
+        surfaceIndex = surfaceIndex + 2;
+    else
+        surfaceIndex = surfaceIndex + 1;
+    end
 end
 end

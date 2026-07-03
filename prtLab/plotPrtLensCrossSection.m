@@ -12,7 +12,7 @@ arguments
     options.FilterColor (1,3) double = [0.60 1.00 0.75]
     options.DefaultClearAperture (1,1) double {mustBePositive} = 1.0
     options.ShowLabels (1,1) logical = true
-    options.ShowStop (1,1) logical = true
+    options.ShowStop (1,1) logical = false
     options.StopZ (1,1) double = 0.20
     options.EntrancePupilRadius (1,1) double {mustBePositive} = 5.57/(2*2.8)
 end
@@ -64,10 +64,21 @@ if options.ShowLabels
     end
 end
 
-xlabel('z (mm)');
-ylabel('y (mm)');
+axisUnits = prtLengthUnits(T);
+xlabel("z (" + axisUnits + ")");
+ylabel("y (" + axisUnits + ")");
 xlim([zMin, zMax]);
 
+end
+
+function units = prtLengthUnits(T)
+units = "";
+if isfield(T.Properties.UserData, 'lambdaUnits')
+    units = string(T.Properties.UserData.lambdaUnits);
+end
+if strlength(units) == 0
+    units = "length units";
+end
 end
 
 function plotElement(T, vertexZ, indexA, indexB, numPoints, color, defaultClearAperture)

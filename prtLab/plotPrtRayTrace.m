@@ -16,6 +16,13 @@ arguments
     options.IncompleteLineStyle (1,1) string = "--"
     options.AutoExpandAxes (1,1) logical = true
     options.AxisPaddingFraction (1,1) double {mustBeNonnegative} = 0.04
+    options.ColorByMode (1,1) logical = true
+    options.ModeColors struct = struct( ...
+        'input', [0.85 0.10 0.10], ...
+        'transmitted', [0.85 0.10 0.10], ...
+        'ordinary', [0.00 0.30 0.90], ...
+        'extraordinary', [0.00 0.55 0.20], ...
+        'reflected', [0.95 0.45 0.05])
 end
 
 hold on;
@@ -34,7 +41,8 @@ for outputIndex = 1:numel(outputs)
         for finalIndex = 1:numel(finalRayIds)
             points = plotOneFinalRay(rayOutput, finalRayIds(finalIndex), ...
             colors(outputIndex,:), options.LineWidth, ...
-            options.PreExtend, options.PostExtend);
+            options.PreExtend, options.PostExtend, ...
+            options.ColorByMode, options.ModeColors);
             plottedPoints = [plottedPoints; points]; %#ok<AGROW>
         end
     end
@@ -69,7 +77,7 @@ else
 end
 end
 
-function points = plotOneFinalRay(rayOutput, finalRayId, color, lineWidth, preExtend, postExtend)
+function points = plotOneFinalRay(rayOutput, finalRayId, color, lineWidth, preExtend, postExtend, colorByMode, modeColors)
 history = rayOutput.rays(finalRayId).history;
 positions = zeros(numel(history), 3);
 for historyIndex = 1:numel(history)
@@ -81,20 +89,39 @@ initialPoint = positions(1,:);
 initialDirection = initialRay.S(:).';
 prePoint = initialPoint - preExtend*initialDirection;
 
+preColor = rayColor(initialRay, color, colorByMode, modeColors);
 plot([prePoint(3), initialPoint(3)], [prePoint(2), initialPoint(2)], ...
-    '-', 'Color', color, 'LineWidth', lineWidth);
-plot(positions(:,3), positions(:,2), ...
-    '-', 'Color', color, 'LineWidth', lineWidth);
+    '-', 'Color', preColor, 'LineWidth', lineWidth);
+
+for segmentIndex = 2:numel(history)
+    segmentRay = rayOutput.rays(history(segmentIndex-1));
+    segmentColor = rayColor(segmentRay, color, colorByMode, modeColors);
+    plot(positions(segmentIndex-1:segmentIndex,3), positions(segmentIndex-1:segmentIndex,2), ...
+        '-', 'Color', segmentColor, 'LineWidth', lineWidth);
+end
 
 finalRay = rayOutput.rays(finalRayId);
 finalPoint = positions(end,:);
 finalDirection = finalRay.S(:).';
 postPoint = finalPoint + postExtend*finalDirection;
+postColor = rayColor(finalRay, color, colorByMode, modeColors);
 plot([finalPoint(3), postPoint(3)], [finalPoint(2), postPoint(2)], ...
-    '-', 'Color', color, 'LineWidth', lineWidth);
+    '-', 'Color', postColor, 'LineWidth', lineWidth);
 
 points3 = [prePoint; positions; postPoint];
 points = points3(:,[3, 2]);
+end
+
+function color = rayColor(ray, fallbackColor, colorByMode, modeColors)
+color = fallbackColor;
+if ~colorByMode || ~isfield(ray, 'mode')
+    return;
+end
+
+modeName = char(ray.mode);
+if isfield(modeColors, modeName)
+    color = modeColors.(modeName);
+end
 end
 
 function points = plotIncompleteRay(rayOutput, color, lineWidth, preExtend, lineStyle)
