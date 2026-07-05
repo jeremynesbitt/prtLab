@@ -27,7 +27,7 @@ switch caseName
             interaction, mediumIn, mediumOut, ray, hit, normal, options);
 
     case "uniaxialToUniaxial"
-        interaction = traceUniaxialToUniaxialStub( ...
+        interaction = traceUniaxialToUniaxial( ...
             interaction, mediumIn, mediumOut, ray, hit, normal, options);
 
     otherwise
