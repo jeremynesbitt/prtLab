@@ -8,7 +8,7 @@ function h = plotPrtSystem3D(T, rayOutputs, options)
 %   and extraordinary branch fields are shown separately.
 
 arguments
-    T table
+    T
     rayOutputs
     options.ShowSystem (1,1) logical = true
     options.ShowRays (1,1) logical = true
@@ -54,7 +54,7 @@ options.PolarizationScale = resolvePolarizationScale(T, outputs, options);
 h = initializeHandles();
 
 if options.ShowSystem
-    [systemPoints, systemHandles] = plotSystemSurfaces(T, options);
+    [systemPoints, systemHandles] = plotSystemGeometry(T, options);
     allPoints = [allPoints; systemPoints];
     h.surfaces = [h.surfaces; systemHandles(:)];
 end
@@ -109,6 +109,42 @@ elseif numel(rayOutputs) > 1
     outputs = num2cell(rayOutputs);
 else
     outputs = {rayOutputs};
+end
+end
+
+function [points, handles] = plotSystemGeometry(T, options)
+if isstruct(T) && isfield(T, 'type') && string(T.type) == "solid"
+    [points, handles] = plotSolidGeometry(T, options);
+else
+    [points, handles] = plotSystemSurfaces(T, options);
+end
+end
+
+function [points, handles] = plotSolidGeometry(solid, options)
+points = zeros(0,3);
+handles = gobjects(0);
+for faceIndex = 1:numel(solid.faces)
+    face = solid.faces(faceIndex);
+    vertices = face.vertices;
+    hPatch = patch( ...
+        'XData', vertices(1,:), ...
+        'YData', vertices(2,:), ...
+        'ZData', vertices(3,:), ...
+        'FaceColor', solidFaceColor(solid, face), ...
+        'FaceAlpha', options.SurfaceAlpha, ...
+        'EdgeColor', [0 0 0], ...
+        'EdgeAlpha', max(options.EdgeAlpha, 0.25), ...
+        'LineWidth', 1.0);
+    points = [points; vertices.'];
+    handles = [handles; hPatch];
+end
+end
+
+function color = solidFaceColor(solid, face)
+if isfield(solid, 'material') && solid.material.MaterialType == "isotropic"
+    color = [0.60 0.80 1.00];
+else
+    color = [0.85 0.85 0.85];
 end
 end
 
@@ -358,14 +394,20 @@ end
 function points = plottedExtentPoints(T, outputs, options)
 points = zeros(0,3);
 if options.ShowSystem
-    numSurfaces = height(T) - 1;
-    vertexZ = prtSurfaceVertexZ(T);
-    for surfaceIndex = 1:numSurfaces
-        clearAperture = prtClearAperture(T(surfaceIndex,:), options.DefaultClearAperture);
-        z = vertexZ(surfaceIndex);
-        points = [points; ...
-            -clearAperture, -clearAperture, z; ...
-             clearAperture,  clearAperture, z];
+    if isstruct(T) && isfield(T, 'type') && string(T.type) == "solid"
+        for faceIndex = 1:numel(T.faces)
+            points = [points; T.faces(faceIndex).vertices.'];
+        end
+    else
+        numSurfaces = height(T) - 1;
+        vertexZ = prtSurfaceVertexZ(T);
+        for surfaceIndex = 1:numSurfaces
+            clearAperture = prtClearAperture(T(surfaceIndex,:), options.DefaultClearAperture);
+            z = vertexZ(surfaceIndex);
+            points = [points; ...
+                -clearAperture, -clearAperture, z; ...
+                 clearAperture,  clearAperture, z];
+        end
     end
 end
 
@@ -380,7 +422,9 @@ end
 
 function units = prtLengthUnits(T)
 units = "";
-if isfield(T.Properties.UserData, 'lambdaUnits')
+if isstruct(T) && isfield(T, 'lambdaUnits')
+    units = string(T.lambdaUnits);
+elseif istable(T) && isfield(T.Properties.UserData, 'lambdaUnits')
     units = string(T.Properties.UserData.lambdaUnits);
 end
 if strlength(units) == 0

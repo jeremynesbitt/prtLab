@@ -21,6 +21,7 @@ else
     n_inc = ray.metadata.n;
 end
 ada = interaction.normal;
+surfaceReflective = isReflectiveSurface(mediumIn.SurfaceData{1});
 
 axisData = mediumOut.AxisData{1};
 opticAxis_t = axisData.opticAxis;
@@ -56,8 +57,8 @@ epsilon = nInc^2*eye(3,3);
 
 % Here assuming uniaxial with alpha paramterizing the crystal axis.
 epsilonP = [nO_t.^2, 0, 0 ;  ... 
- 0, (nO_i*cos(alpha))^2+(nE_i*sin(alpha))^2, 0.5*(nE_i.^2-nO_i.^2)*sin(2*alpha) ; ...
- 0, 0.5*(nE_t.^2-nO_i.^2)*sin(2*alpha), (nE_t*cos(alpha)).^2+(nO_t*sin(alpha)).^2];
+ 0, (nO_t*cos(alpha))^2+(nE_i*sin(alpha))^2, 0.5*(nE_t.^2-nO_t.^2)*sin(2*alpha) ; ...
+ 0, 0.5*(nE_t.^2-nO_t.^2)*sin(2*alpha), (nE_t*cos(alpha)).^2+(nO_t*sin(alpha)).^2];
 
 
 % ThetaX/Y in the rotated coordinate system
@@ -119,6 +120,9 @@ S_E  = inv(Rz)*S_E;
 E_E  = inv(Rz)*E_E;
 H_E  = inv(Rz)*H_E;
 
+
+% Go back to global coordinates before reflection
+kinc = inv(Rz)*kinc;
 
 
 %% Reflection 
@@ -190,15 +194,16 @@ s2 = cross(ada, s1);
 s2 = s2/norm(s2);
 
 
+
+
 %% -------------------------------------------------------
 % Construct F matrix for this interface
 %% -------------------------------------------------------
 F = [ ...
- dot(s1,E_ta) dot(s1,E_tb) -dot(s1,E_ro) -dot(s1,E_re);
- dot(s2,E_ta) dot(s2,E_tb) -dot(s2,E_ro) -dot(s2,E_re);
- dot(s1,H_ta) dot(s1,H_tb) -dot(s1,H_ro) -dot(s1,H_re);
- dot(s2,H_ta) dot(s2,H_tb) -dot(s2,H_ro) -dot(s2,H_re) ];
-
+ dot(s1,E_O) dot(s1,E_E) -dot(s1,E_ro) -dot(s1,E_re);
+ dot(s2,E_O) dot(s2,E_E) -dot(s2,E_ro) -dot(s2,E_re);
+ dot(s1,H_O) dot(s1,H_E) -dot(s1,H_ro) -dot(s1,H_re);
+ dot(s2,H_O) dot(s2,H_E) -dot(s2,H_ro) -dot(s2,H_re) ];
 
 Cm = [ dot(s1,E_inc); dot(s2,E_inc); dot(s1,H_inc); dot(s2,H_inc) ];
 % This is the case IV condition from chapter 19
@@ -208,18 +213,55 @@ Cn = zeros(size(Cm));
 Am = F\Cm; % or F\Cs
 Ap = zeros(size(Am)); % or F\Cp 
 
-P_to = [Am(1)*E_ta, zeros(size(E_ta)), S_out]*inv([E_inc, E_n, S_inc]);
-P_te = [Am(2)*E_tb, zeros(size(E_ta)), S_out]*inv([E_inc, E_n, S_inc]);
+P_to = [Am(1)*E_O, zeros(size(E_O)), S_O]*inv([E_inc, E_n, S_inc]);
+P_te = [Am(2)*E_E, zeros(size(E_O)), S_E]*inv([E_inc, E_n, S_inc]);
 
-P_ro  = [Am(3)*E_ro, zeros(size(E_ta)), S_ro]*inv([E_inc, E_n, S_inc]);
-P_re  = [Am(4)*E_re, zeros(size(E_ta)), S_re]*inv([E_inc, E_n, S_inc]);
+P_ro  = [Am(3)*E_ro, zeros(size(E_O)), S_ro]*inv([E_inc, E_n, S_inc]);
+P_re  = [Am(4)*E_re, zeros(size(E_O)), S_re]*inv([E_inc, E_n, S_inc]);
 
+SD_o = k_tO * transpose(k_inc);
+SD_e = S_E * transpose(k_inc);
+
+%% Diagnostics
+
+% First let's check flux ratios.  If there is no absorption we should be
+% able to prove conversation of energy if everything is set up correctly.
+% If we have E_s input, then have to look at the intensity for transmitted
+% o and e and reflected s and p.  
+
+Eout_o = Am(1)*E_O;
+Hout_o = Am(1)*H_O;
+
+Eout_e = Am(2)*E_E;
+Hout_e = Am(2)*H_E;
+
+Eref_o = Am(3)*E_ro;
+Href_o = Am(3)*H_ro;
+
+Eref_e = Am(4)*E_re;
+Href_e = Am(4)*H_re;
+
+Iout_o = dot(cross(Eout_o, conj(Hout_o)), ada);
+Iout_e = dot(cross(Eout_e, conj(Hout_e)), ada);
+
+Iout_ro = dot(cross(Eref_o, conj(Href_o)), -ada);
+Iout_re = dot(cross(Eref_e, conj(Href_e)), -ada);
+
+
+Iout_all = Iout_o+Iout_e + Iout_ro+Iout_re;
+
+
+transmissionFluxRatio = Iout_all/Iin; % This should not be == 1 if there is no absorption
+
+% We can also detect direction vectors. 
+% E dot H should be 0
+% Check transverse projections of E are equal across interface
 
 % Diagnostic
-E_out =   Am(1)*E_ta;
-E_out_b = Am(2)*E_tb;
-H_out =   Am(1)*H_ta;
-H_out_b = Am(2)*H_tb;
+E_out =   Am(1)*E_O;
+E_out_b = Am(2)*E_E;
+H_out =   Am(1)*H_O;
+H_out_b = Am(2)*H_E;
 
 Iout_a  = dot(cross(E_out, conj(H_out)), ada);
 Iout_b  = dot(cross(E_out_b, conj(H_out_b)), ada);
@@ -238,8 +280,8 @@ Iout/Iin; % This should not be > 1
 
 
 %% Coordinate transformation matrices
-[p1,s1] = calcPandSUnitVectors(kinc, interaction.normal);
-Oin = calcO(s1,p1,kinc);
+[p1,s1] = calcPandSUnitVectors(k_inc, interaction.normal);
+Oin = calcO(s1,p1,k_inc);
 
 [p_o, s_o] = calcPandSUnitVectors(k_tO, interaction.normal);
 Oout_o = calcO(s_o,p_o,k_tO);
@@ -320,7 +362,7 @@ if surfaceReflective
     reflected_o.E = reflected_o.fieldE;
     reflected_o.H = reflected_o.fieldH;
     reflected_o.P = P_ro * ray.P;
-    [pRef, sRef] = interfaceSPBasis(k_r, ada, s1);
+    [pRef, sRef] = calcPandSUnitVectors(k_r, ada, s1);
     Oref = calcO(sRef, pRef, k_ro);
     reflected_o.Q = (Oref / Oin) * ray.Q;
     reflected_o.O = Oref;
@@ -342,7 +384,7 @@ if surfaceReflective
     reflected_e.E = reflected_e.fieldE;
     reflected_e.H = reflected_e.fieldH;
     reflected_e.P = P_re * ray.P;
-    [pRef, sRef] = interfaceSPBasis(k_ref, ada, s1);
+    [pRef, sRef] = calcPandSUnitVectors(k_ref, ada, s1);
     Oref = calcO(sRef, pRef, k_ref);
     reflected_e.Q = (Oref / Oin) * ray.Q;
     reflected_e.O = Oref;
@@ -505,3 +547,11 @@ end
 
 end
 
+function tf = isReflectiveSurface(surfaceData)
+tf = false;
+if isfield(surfaceData, 'isReflective')
+    tf = logical(surfaceData.isReflective);
+elseif isfield(surfaceData, 'isRelective')
+    tf = logical(surfaceData.isRelective);
+end
+end

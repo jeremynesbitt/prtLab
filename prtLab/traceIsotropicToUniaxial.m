@@ -237,6 +237,67 @@ Oout_e = calcO(se,pe,S_E);
 Q_o = Oout_o / Oin;
 Q_e = Oout_e / Oin;
 
+%% Diagnostics
+
+% First let's check flux ratios.  If there is no absorption we should be
+% able to prove conversation of energy if everything is set up correctly.
+% If we have E_s input, then have to look at the intensity for transmitted
+% o and e and reflected s and p.  
+
+Eout_so = As(1)*E_O;
+Hout_so = As(1)*H_O;
+
+Eout_po = Ap(1)*E_O;
+Hout_po = Ap(1)*H_O;
+
+Eout_se = As(2)*E_E;
+Hout_se = As(2)*H_E;
+
+Eout_pe = Ap(2)*E_E;
+Hout_pe = Ap(2)*H_E;
+
+Eref_ss = As(3)*Er_s;
+Href_ss = As(3)*Hr_s;
+
+Eref_ps = Ap(3)*Er_s;
+Href_ps = Ap(3)*Hr_s;
+
+Eref_sp = As(4)*Er_p;
+Href_sp = As(4)*Hr_p;
+
+Eref_pp = Ap(4)*Er_p;
+Href_pp = Ap(4)*Hr_p;
+
+Iin_s = dot(cross(Einc_s, conj(Hinc_s)), ada);
+Iin_p = dot(cross(Einc_p, conj(Hinc_p)), ada);
+
+Iout_so = dot(cross(Eout_so, conj(Hout_so)), ada);
+Iout_se = dot(cross(Eout_se, conj(Hout_se)), ada);
+
+Iout_po = dot(cross(Eout_po, conj(Hout_po)), ada);
+Iout_pe = dot(cross(Eout_pe, conj(Hout_pe)), ada);
+
+Iout_rss = dot(cross(Eref_ss, conj(Href_ss)), -ada);
+Iout_rsp = dot(cross(Eref_sp, conj(Href_sp)), -ada);
+
+Iout_rps = dot(cross(Eref_ps, conj(Href_ps)), -ada);
+Iout_rpp = dot(cross(Eref_pp, conj(Href_pp)), -ada);
+
+
+Iout_all_s = Iout_so+Iout_se + Iout_rss+Iout_rsp;
+
+Iout_all_p = Iout_po+Iout_pe + Iout_rps+Iout_rpp;
+
+
+transmissionFluxRatio_s = Iout_all_s/Iin_s; % This should not be == 1 if there is no absorption
+
+transmissionFluxRatio_p = Iout_all_p/Iin_p; % This should not be == 1 if there is no absorption
+
+% We can also detect direction vectors. 
+% E dot H should be 0
+% Check transverse projections of E are equal across interface
+
+
 %% Child rays
 childO = makeChildTemplate(ray, hit, normal, mediumOut, "ordinary");
 childO.k = k_tO;
