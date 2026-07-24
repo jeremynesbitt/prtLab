@@ -13,6 +13,7 @@ arguments
     options.ShowSystem (1,1) logical = true
     options.ShowRays (1,1) logical = true
     options.ShowPolarization (1,1) logical = true
+    options.RaySelection (1,1) string {mustBeMember(options.RaySelection, ["all", "dominant"])} = "all"
     options.PolarizationAt (1,1) string {mustBeMember(options.PolarizationAt, ["vertices", "interfaces", "final", "all"])} = "interfaces"
     options.FieldName (1,1) string {mustBeMember(options.FieldName, ["fieldE", "modeE"])} = "fieldE"
     options.PolarizationScale = "auto"
@@ -33,6 +34,7 @@ arguments
     options.ColorByMode (1,1) logical = true
     options.ModeColors struct = struct( ...
         'input', [0.12 0.12 0.12], ...
+        'isotropic', [0.12 0.12 0.12], ...
         'transmitted', [0.12 0.12 0.12], ...
         'ordinary', [0.00 0.30 0.90], ...
         'extraordinary', [0.00 0.55 0.20], ...
@@ -65,8 +67,9 @@ if options.ShowRays || options.ShowPolarization
         if isempty(rayOutput.finalRayIds)
             continue;
         end
-        for finalIndex = 1:numel(rayOutput.finalRayIds)
-            finalRayId = rayOutput.finalRayIds(finalIndex);
+        finalRayIds = selectedFinalRayIds(rayOutput, options.RaySelection);
+        for finalIndex = 1:numel(finalRayIds)
+            finalRayId = finalRayIds(finalIndex);
             history = rayOutput.rays(finalRayId).history;
             [rayPoints, rayHandles] = plotRayHistory(rayOutput, history, options);
             allPoints = [allPoints; rayPoints];
@@ -95,6 +98,14 @@ end
 
 end
 
+function finalRayIds = selectedFinalRayIds(rayOutput, selection)
+if selection == "dominant"
+    [~, finalRayIds] = selectDominantFinalRay(rayOutput);
+else
+    finalRayIds = rayOutput.finalRayIds;
+end
+end
+
 function h = initializeHandles()
 h = struct( ...
     'surfaces', gobjects(0), ...
@@ -113,10 +124,23 @@ end
 end
 
 function [points, handles] = plotSystemGeometry(T, options)
-if isstruct(T) && isfield(T, 'type') && string(T.type) == "solid"
+if isstruct(T) && isfield(T, 'type') && string(T.type) == "scene"
+    [points, handles] = plotSceneGeometry(T, options);
+elseif isstruct(T) && isfield(T, 'type') && string(T.type) == "solid"
     [points, handles] = plotSolidGeometry(T, options);
 else
     [points, handles] = plotSystemSurfaces(T, options);
+end
+end
+
+function [points, handles] = plotSceneGeometry(scene, options)
+points = zeros(0,3);
+handles = gobjects(0);
+for solidIndex = 1:numel(scene.solids)
+    [solidPoints, solidHandles] = ...
+        plotSolidGeometry(scene.solids{solidIndex}, options);
+    points = [points; solidPoints];
+    handles = [handles; solidHandles(:)];
 end
 end
 
@@ -360,9 +384,22 @@ if ~options.ColorByMode || ~isfield(ray, 'mode')
     return;
 end
 
-modeName = char(ray.mode);
-if isfield(options.ModeColors, modeName)
-    color = options.ModeColors.(modeName);
+colorName = rayColorName(ray, options.ModeColors);
+if isfield(options.ModeColors, colorName)
+    color = options.ModeColors.(colorName);
+end
+end
+
+function colorName = rayColorName(ray, modeColors)
+colorName = char(ray.mode);
+if ~isfield(ray, 'branchType') || strlength(ray.branchType) == 0
+    return;
+end
+
+branchName = char(ray.branchType);
+if any(ray.branchType == ["input", "reflected"]) || ...
+        ~isfield(modeColors, colorName)
+    colorName = branchName;
 end
 end
 
@@ -394,7 +431,14 @@ end
 function points = plottedExtentPoints(T, outputs, options)
 points = zeros(0,3);
 if options.ShowSystem
-    if isstruct(T) && isfield(T, 'type') && string(T.type) == "solid"
+    if isstruct(T) && isfield(T, 'type') && string(T.type) == "scene"
+        for solidIndex = 1:numel(T.solids)
+            solid = T.solids{solidIndex};
+            for faceIndex = 1:numel(solid.faces)
+                points = [points; solid.faces(faceIndex).vertices.'];
+            end
+        end
+    elseif isstruct(T) && isfield(T, 'type') && string(T.type) == "solid"
         for faceIndex = 1:numel(T.faces)
             points = [points; T.faces(faceIndex).vertices.'];
         end
@@ -445,7 +489,7 @@ end
 function addModeLegend(options)
 legendHandles = gobjects(0);
 legendLabels = strings(0);
-modeNames = ["input", "ordinary", "extraordinary", "reflected"];
+modeNames = ["input", "isotropic", "ordinary", "extraordinary", "reflected"];
 for modeName = modeNames
     if isfield(options.ModeColors, char(modeName))
         color = options.ModeColors.(char(modeName));

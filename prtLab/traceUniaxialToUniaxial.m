@@ -21,7 +21,6 @@ else
     n_inc = ray.metadata.n;
 end
 ada = interaction.normal;
-surfaceReflective = isReflectiveSurface(mediumIn.SurfaceData{1});
 
 axisData = mediumOut.AxisData{1};
 opticAxis_t = axisData.opticAxis;
@@ -123,6 +122,7 @@ H_E  = inv(Rz)*H_E;
 
 % Go back to global coordinates before reflection
 kinc = inv(Rz)*kinc;
+ada = interaction.normal;
 
 
 %% Reflection 
@@ -138,14 +138,14 @@ a = opticAxisIn(:) / norm(opticAxisIn); % norm here is unnecessary since it is h
 % matter which two vectors I choose; the a*a' accomplishes this.
 epsilon = nO_i^2*eye(3) + (nE_i^2 - nO_i^2)*(a*a.');
 
-% wave vector parallel to the interface.  TODO:  Update this for arbitrary ada
-beta = n_inc * k_inc(1:2);
-
-% Compute o and e reflected waves
-[n_ref, k_ref, q_ref] = extraordinaryReflectedQ(beta, opticAxisIn, nO_i, nE_i);
-qz_o = -sqrt(nO_i^2 - beta(1)^2 - beta(2)^2);
-q_o = [beta(1); beta(2); qz_o];
-k_o = q_o / nO_i;
+% Compute o and e reflected waves while conserving tangential q.
+qInc = n_inc*k_inc;
+[n_ref, k_ref, q_ref] = extraordinaryReflectedQ( ...
+    qInc, ada, opticAxisIn, nO_i, nE_i);
+qParallel = qInc - dot(qInc,ada)*ada;
+qNormalO = -sqrt(nO_i^2 - dot(qParallel,qParallel));
+qRefO = qParallel + qNormalO*ada;
+k_ro = qRefO / nO_i;
 
 K_re = makeK(k_ref);
 M_re = epsilon + (n_ref*K_re)*(n_ref*K_re);
@@ -166,7 +166,7 @@ H_re = n_ref*K_re*E_re;
 S_re = cross(E_re,H_re);
 S_re = S_re/norm(S_re);
 
-K_ro = makeK(k_o);
+K_ro = makeK(k_ro);
 M_ro = epsilon + (nO_i*K_ro)*(nO_i*K_ro);
 
 det(M_ro) ; % should be close to eps
@@ -294,109 +294,56 @@ Q_o = Oout_o / Oin;
 Q_e = Oout_e / Oin;
 
 %% Child rays
-childO = makeChildTemplate(ray, hit, normal, mediumOut, "ordinary");
-childO.k = k_tO;
-childO.S = S_O;
-childO.modeE = E_O;
-childO.modeH = H_O;
-childO.fieldE = P_to * ray.fieldE;
-scaleO = prtModalFieldScale(E_O, childO.fieldE);
-childO.fieldH = scaleO * H_O;
-childO.E = childO.fieldE;
-childO.H = childO.fieldH;
-childO.P = P_to * ray.P;
-childO.Q = Q_o * ray.Q;
-childO.O = Oout_o;
-childO.localBasis = struct('s', s_o, 'p', p_o, 'basisDirection', k_tO);
-childO.amplitude = norm(childO.fieldE);
-childO.flux = real(dot(cross(childO.fieldE, conj(childO.fieldH)), interaction.normal));
-childO.metadata = struct( ...
-    'n', nO_t, ...
-    'phaseIndex', nO_t, ...
-    'modalScale', scaleO, ...
-    'P_interface', P_to, ...
-    'P_beforePropagation', ray.P, ...
-    'propagationProjector', SD_o, ...
+childO = buildPolarizedChild(ray, hit, normal, mediumOut, ...
+    Mode="ordinary", BranchType="transmitted", ...
+    k=k_tO, S=S_O, P=P_to, Q=Q_o, O=Oout_o, ...
+    LocalBasis=struct('s', s_o, 'p', p_o, 'basisDirection', k_tO), ...
+    Index=nO_t, ModeE=E_O, ModeH=H_O, ...
+    FluxNormal=interaction.normal, PropagationProjector=SD_o, ...
+    Metadata=struct( ...
     'epsilon', epsilonP, ...
-    'opticAxis', inv(Rz)*opticAxis_t);
+    'opticAxis', inv(Rz)*opticAxis_t));
 
 
-childE = makeChildTemplate(ray, hit, normal, mediumOut, "extraordinary");
-childE.k = k_tE;
-childE.S = S_E;
-childE.modeE = E_E;
-childE.modeH = H_E;
-childE.fieldE = P_te * ray.fieldE;
-scaleE = prtModalFieldScale(E_E, childE.fieldE);
-childE.fieldH = scaleE * H_E;
-childE.E = childE.fieldE;
-childE.H = childE.fieldH;
-childE.P = P_te * ray.P;
-childE.Q = Q_e * ray.Q;
-childE.O = Oout_e;
-childE.localBasis = struct('s', se, 'p', pe, 'basisDirection', S_E);
-childE.amplitude = norm(childE.fieldE);
-childE.flux = real(dot(cross(childE.fieldE, conj(childE.fieldH)), interaction.normal));
-childE.metadata = struct( ...
-    'n', ne, ...
+childE = buildPolarizedChild(ray, hit, normal, mediumOut, ...
+    Mode="extraordinary", BranchType="transmitted", ...
+    k=k_tE, S=S_E, P=P_te, Q=Q_e, O=Oout_e, ...
+    LocalBasis=struct('s', se, 'p', pe, 'basisDirection', S_E), ...
+    Index=ne, ModeE=E_E, ModeH=H_E, ...
+    FluxNormal=interaction.normal, PhaseIndex=ne, ...
+    PropagationProjector=SD_e, Metadata=struct( ...
     'n_SE', ne*k_tE'*S_E, ...
-    'phaseIndex', ne, ...
-    'modalScale', scaleE, ...
-    'P_interface', P_te, ...
-    'P_beforePropagation', ray.P, ...
-    'propagationProjector', SD_e, ...
     'epsilon', epsilonP, ...
-    'opticAxis', inv(Rz)*opticAxis_t);
+    'opticAxis', inv(Rz)*opticAxis_t));
 
 interaction.children = [childO; childE];
 
-%% TODO:  Why is it recalculating E and H?
-if surfaceReflective
-    reflected_o = makeChildTemplate(ray, hit, normal, mediumIn, "reflected");
-    reflected_o.k = k_ro;
-    reflected_o.S = S_ro;
-    reflected_o.fieldE = P_ro * ray.fieldE;
-    reflected_o.fieldH = nr * K_ro * reflected_o.fieldE;
-    reflected_o.modeE = reflected_o.fieldE / norm(reflected_o.fieldE);
-    reflected_o.modeH = nr * K_ro * reflected_o.modeE;
-    reflected_o.E = reflected_o.fieldE;
-    reflected_o.H = reflected_o.fieldH;
-    reflected_o.P = P_ro * ray.P;
-    [pRef, sRef] = calcPandSUnitVectors(k_r, ada, s1);
-    Oref = calcO(sRef, pRef, k_ro);
-    reflected_o.Q = (Oref / Oin) * ray.Q;
-    reflected_o.O = Oref;
-    reflected_o.localBasis = struct('s', sRef, 'p', pRef, 'basisDirection', k_r);
-    reflected_o.amplitude = norm(reflected_o.fieldE);
-    reflected_o.flux = abs(real(dot(cross(reflected_o.fieldE, conj(reflected_o.fieldH)), ada)));
-    reflected_o.metadata = struct( ...
-        'n', nr, ...
-        'P_interface', P_ro, ...
-        'isPropagating', reflected_o.active);
+[pRefO, sRefO] = calcPandSUnitVectors(k_ro, ada, s1);
+OrefO = calcO(sRefO, pRefO, k_ro);
+QrefO = OrefO / Oin;
+SD_ro = S_ro * transpose(k_inc);
+reflected_o = buildPolarizedChild(ray, hit, normal, mediumIn, ...
+    Mode="ordinary", BranchType="reflected", ...
+    k=k_ro, S=S_ro, P=P_ro, Q=QrefO, O=OrefO, ...
+    LocalBasis=struct('s', sRefO, 'p', pRefO, 'basisDirection', k_ro), ...
+    Index=nO_i, ModeE=E_ro, ModeH=H_ro, FluxNormal=-ada, ...
+    PropagationProjector=SD_ro, Metadata=struct( ...
+    'epsilon', epsilon, 'opticAxis', opticAxisIn));
 
-    reflected_e = makeChildTemplate(ray, hit, normal, mediumIn, "reflected");
-    reflected_e.k = k_ref;
-    reflected_e.S = S_re;
-    reflected_e.fieldE = P_re * ray.fieldE;
-    reflected_e.fieldH = n_ref * K_re * reflected_e.fieldE;
-    reflected_e.modeE = reflected_e.fieldE / norm(reflected_e.fieldE);
-    reflected_e.modeH = n_ref * K_re * reflected_e.modeE;
-    reflected_e.E = reflected_e.fieldE;
-    reflected_e.H = reflected_e.fieldH;
-    reflected_e.P = P_re * ray.P;
-    [pRef, sRef] = calcPandSUnitVectors(k_ref, ada, s1);
-    Oref = calcO(sRef, pRef, k_ref);
-    reflected_e.Q = (Oref / Oin) * ray.Q;
-    reflected_e.O = Oref;
-    reflected_e.localBasis = struct('s', sRef, 'p', pRef, 'basisDirection', k_r);
-    reflected_e.amplitude = norm(reflected_e.fieldE);
-    reflected_e.flux = abs(real(dot(cross(reflected_e.fieldE, conj(reflected_e.fieldH)), ada)));
-    reflected_e.metadata = struct( ...
-        'n', n_ref, ...
-        'P_interface', P_re, ...
-        'isPropagating', reflected_e.active);    
-    children = [children; reflected_e];
-end
+[pRefE, sRefE] = calcPandSUnitVectors(k_ref, ada, s1);
+OrefE = calcO(sRefE, pRefE, k_ref);
+QrefE = OrefE / Oin;
+SD_re = S_re * transpose(k_inc);
+reflected_e = buildPolarizedChild(ray, hit, normal, mediumIn, ...
+    Mode="extraordinary", BranchType="reflected", ...
+    k=k_ref, S=S_re, P=P_re, Q=QrefE, O=OrefE, ...
+    LocalBasis=struct('s', sRefE, 'p', pRefE, 'basisDirection', k_ref), ...
+    Index=n_ref, ModeE=E_re, ModeH=H_re, FluxNormal=-ada, ...
+    PhaseIndex=n_ref, PropagationProjector=SD_re, Metadata=struct( ...
+    'n_SE', n_ref*dot(k_ref,S_re), ...
+    'epsilon', epsilon, 'opticAxis', opticAxisIn));
+interaction.children = ...
+    [interaction.children; reflected_o; reflected_e];
 
 end
 
@@ -545,13 +492,4 @@ end
 
 
 
-end
-
-function tf = isReflectiveSurface(surfaceData)
-tf = false;
-if isfield(surfaceData, 'isReflective')
-    tf = logical(surfaceData.isReflective);
-elseif isfield(surfaceData, 'isRelective')
-    tf = logical(surfaceData.isRelective);
-end
 end

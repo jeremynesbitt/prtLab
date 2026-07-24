@@ -11,11 +11,18 @@ end
 
 childIds = [];
 metadataNames = fieldnames(childMetadata);
+parentFlux = max(abs(rays(parentRayId).flux), eps);
 
 for ii = 1:numel(interaction.children)
+    if numel(rays) >= options.maxBranches
+        break;
+    end
+
     child = interaction.children(ii);
-    if ~child.active || child.flux < options.minFlux || ...
-            abs(child.amplitude) < options.minAmplitude
+    relativeFlux = abs(child.flux) / parentFlux;
+    if ~child.active || abs(child.flux) <= options.minFlux || ...
+            abs(child.amplitude) <= options.minAmplitude || ...
+            relativeFlux < options.minRelativeFlux
         continue;
     end
 

@@ -13,7 +13,6 @@ S_inc = interaction.incident.S;
 n1 = incidentIndexFromRay(ray, mediumIn);
 n2 = mediumOut.IndexData{1}.n;
 ada = interaction.normal;
-surfaceReflective = isReflectiveSurface(mediumIn.SurfaceData{1});
 tir = isTotalInternalReflection(k_inc, ada, n1, n2);
 
 % Use snell's law to calculate the exit fields.
@@ -120,22 +119,6 @@ R_s = abs(As(3))^2;
 Test_p = T_p + R_p; 
 Test_s = T_s + R_s;
 
-child = makeChildTemplate(ray, hit, normal, mediumOut, "transmitted");
-child.k = k_out;
-child.S = S_out;
-child.fieldE = P_t * ray.fieldE;
-if ~tir
-    child.fieldH = n2 * K_out * child.fieldE;
-    child.modeE = prtNorm(child.fieldE); 
-    child.modeH = n2 * K_out * child.modeE;
-else
-    child.fieldH = zeros(3,1);
-    child.modeE = zeros(3,1);
-    child.modeH = zeros(3,1);
-end
-child.E = child.fieldE;
-child.H = child.fieldH;
-child.P = P_t * ray.P;
 [pIn, sIn] = calcPandSUnitVectors(k_inc, ada, s1);
 Oin = calcO(sIn, pIn, k_inc);
 
@@ -160,41 +143,27 @@ Q_r = Oref*(I_r / Oin);
 I_t = eye(3);
 Q_t = Oout*(I_t / Oin);
 
-child.Q = Q_t * ray.Q;
-child.O = Oout;
-child.localBasis = struct('s', sOut, 'p', pOut, 'basisDirection', k_out);
-child.amplitude = norm(child.fieldE);
-child.flux = real(dot(cross(child.fieldE, conj(child.fieldH)), ada));
-child.active = ~surfaceReflective && ~tir && isPropagatingGeometricRay(child.k, child.S, n2);
-child.metadata = struct( ...
-    'n', n2, ...
-    'P_interface', P_t, ...
-    'isPropagating', child.active);
+SD_t = S_out * transpose(k_inc);
+SD_r = S_r * transpose(k_inc);
+transmittedActive = ~tir && ...
+    isPropagatingGeometricRay(k_out, S_out, n2);
+child = buildPolarizedChild(ray, hit, normal, mediumOut, ...
+    Mode="isotropic", BranchType="transmitted", ...
+    k=k_out, S=S_out, P=P_t, Q=Q_t, O=Oout, ...
+    LocalBasis=struct('s', sOut, 'p', pOut, 'basisDirection', k_out), ...
+    Index=n2, FluxNormal=ada, Active=transmittedActive, ...
+    PropagationProjector=SD_t, ...
+    Metadata=struct('isPropagating', transmittedActive));
 
 children = child;
 
-if surfaceReflective || tir
-    reflected = makeChildTemplate(ray, hit, normal, mediumIn, "reflected");
-    reflected.k = k_r;
-    reflected.S = S_r;
-    reflected.fieldE = P_r * ray.fieldE;
-    reflected.fieldH = nr * K_r * reflected.fieldE;
-    reflected.modeE = reflected.fieldE / norm(reflected.fieldE);
-    reflected.modeH = nr * K_r * reflected.modeE;
-    reflected.E = reflected.fieldE;
-    reflected.H = reflected.fieldH;
-    reflected.P = P_r * ray.P;
-    reflected.Q = Q_r * ray.Q;
-    reflected.O = Oref;
-    reflected.localBasis = struct('s', sRef, 'p', pRef, 'basisDirection', k_r);
-    reflected.amplitude = norm(reflected.fieldE);
-    reflected.flux = abs(real(dot(cross(reflected.fieldE, conj(reflected.fieldH)), ada)));
-    reflected.metadata = struct( ...
-        'n', nr, ...
-        'P_interface', P_r, ...
-        'isPropagating', reflected.active);
-    children = [children; reflected];
-end
+reflected = buildPolarizedChild(ray, hit, normal, mediumIn, ...
+    Mode="isotropic", BranchType="reflected", ...
+    k=k_r, S=S_r, P=P_r, Q=Q_r, O=Oref, ...
+    LocalBasis=struct('s', sRef, 'p', pRef, 'basisDirection', k_r), ...
+    Index=nr, FluxNormal=-ada, PropagationProjector=SD_r, ...
+    Metadata=struct('isPropagating', true));
+children = [children; reflected];
 
 interaction.children = children;
 
@@ -258,21 +227,7 @@ function tf = isPropagatingGeometricRay(k, S, n)
 tf = isreal(k) && isreal(S) && isreal(n);
 end
 
-function tf = isTotalInternalReflection(k, normal, n1, n2)
-cosThetaI = dot(k, normal);
-sin2ThetaI = max(0, 1 - cosThetaI^2);
-tf = isreal(n1) && isreal(n2) && n1 > n2 && (n1/n2)^2 * sin2ThetaI > 1;
-end
 
-
-function tf = isReflectiveSurface(surfaceData)
-tf = false;
-if isfield(surfaceData, 'isReflective')
-    tf = logical(surfaceData.isReflective);
-elseif isfield(surfaceData, 'isRelective')
-    tf = logical(surfaceData.isRelective);
-end
-end
 
 function s1 = s1FromRay(k, normal)
 s1 = cross(k, normal);

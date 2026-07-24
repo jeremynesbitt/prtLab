@@ -8,6 +8,7 @@ end
 options = struct();
 options.maxBranches = 256;
 options.minFlux = 0;
+options.minRelativeFlux = 0;
 options.minAmplitude = 0;
 options.keepDiagnostics = true;
 options.surfaceTolerance = 1e-10;

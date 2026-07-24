@@ -41,6 +41,7 @@ function incident = makeIncidentRecord(ray)
 incident = struct();
 incident.rayId = ray.id;
 incident.mode = ray.mode;
+incident.branchType = ray.branchType;
 incident.mediumType = ray.mediumType;
 incident.position = ray.position;
 incident.k = ray.k;
@@ -73,6 +74,7 @@ end
 function exiting = makeExitingRecords(children)
 exiting = repmat(struct( ...
     'mode', "", ...
+    'branchType', "", ...
     'mediumType', "", ...
     'position', zeros(3,1), ...
     'k', zeros(3,1), ...
@@ -93,6 +95,7 @@ exiting = repmat(struct( ...
 
 for jj = 1:numel(children)
     exiting(jj).mode = children(jj).mode;
+    exiting(jj).branchType = children(jj).branchType;
     exiting(jj).mediumType = children(jj).mediumType;
     exiting(jj).position = children(jj).position;
     exiting(jj).k = children(jj).k;

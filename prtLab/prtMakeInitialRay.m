@@ -18,7 +18,12 @@ ray = emptyRayBranch();
 ray.id = 1;
 ray.parentId = 0;
 ray.surfaceIndex = 0;
-ray.mode = "input";
+if mediumType == "isotropic"
+    ray.mode = "isotropic";
+else
+    ray.mode = "input";
+end
+ray.branchType = "input";
 ray.mediumType = mediumType;
 ray.position = xInc;
 ray.k = kInc;

@@ -19,6 +19,7 @@ arguments
     options.ColorByMode (1,1) logical = true
     options.ModeColors struct = struct( ...
         'input', [0.85 0.10 0.10], ...
+        'isotropic', [0.85 0.10 0.10], ...
         'transmitted', [0.85 0.10 0.10], ...
         'ordinary', [0.00 0.30 0.90], ...
         'extraordinary', [0.00 0.55 0.20], ...
@@ -118,9 +119,22 @@ if ~colorByMode || ~isfield(ray, 'mode')
     return;
 end
 
-modeName = char(ray.mode);
-if isfield(modeColors, modeName)
-    color = modeColors.(modeName);
+colorName = rayColorName(ray, modeColors);
+if isfield(modeColors, colorName)
+    color = modeColors.(colorName);
+end
+end
+
+function colorName = rayColorName(ray, modeColors)
+colorName = char(ray.mode);
+if ~isfield(ray, 'branchType') || strlength(ray.branchType) == 0
+    return;
+end
+
+branchName = char(ray.branchType);
+if any(ray.branchType == ["input", "reflected"]) || ...
+        ~isfield(modeColors, colorName)
+    colorName = branchName;
 end
 end
 

@@ -6,8 +6,10 @@ if options.dispatchUnimplemented == "error"
         'uniaxial-to-uniaxial tracing is not implemented yet.');
 end
 
-childO = makeChildTemplate(ray, hit, normal, mediumOut, "ordinary");
-childE = makeChildTemplate(ray, hit, normal, mediumOut, "extraordinary");
+childO = makeChildTemplate(ray, hit, normal, mediumOut, ...
+    "ordinary", "transmitted");
+childE = makeChildTemplate(ray, hit, normal, mediumOut, ...
+    "extraordinary", "transmitted");
 interaction.children = [childO; childE];
 
 end
