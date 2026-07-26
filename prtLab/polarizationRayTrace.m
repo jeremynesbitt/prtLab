@@ -36,7 +36,9 @@ for surfaceIndex = 1:height(T)-1
         end
 
         [hit, normal, interceptData] = intersectSurface(T(surfaceIndex,:), ray);
-        ray = prtPropagateRayToHit(ray, hit, T.Properties.UserData.lambda);
+        ray = prtPropagateRayToHit( ...
+            ray, hit, T.Properties.UserData.lambda, false, ...
+            options.encodePropagationPhaseInP);
         rayTraceData.rays(rayId) = ray;
 
         interaction = traceSurfaceInteraction( ...

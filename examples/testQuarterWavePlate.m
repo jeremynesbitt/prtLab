@@ -3,7 +3,8 @@ addpath(genpath('..'));
 T = exampleQuarterWavePlateSystem();
 lambda = T.Properties.UserData.lambda ;
 k = [0; 0; 1];
-rayOutput = polarizationRayTrace(T, k, [0;0;0], [0;1]);
+options = struct('encodePropagationPhaseInP', true);
+rayOutput = polarizationRayTrace(T, k, [0;0;0], [0;1], options);
 
 OPL = rayOutput.rays(rayOutput.finalRayIds(1)).OPL - rayOutput.rays(rayOutput.finalRayIds(2)).OPL; 
 

@@ -14,9 +14,8 @@ assert(dot(opticAxis_1,opticAxis_2)==0, 'Optical Axes Should be crossed');
 %opticAxis_1 = [1;0;0];
 %opticAxis_2 = [0;1;0];
 k = [0; 0; 1];
-rayOutput = polarizationRayTrace(T, k, [0;0;0], [0;1]);
-options = rayOutput.options;
-options.minAmplitude = .01;
+options = prtDefaultOptions( ...
+    struct('encodePropagationPhaseInP', true, 'minAmplitude', 0.01));
 rayOutput = polarizationRayTrace(T, k, [0;0;0], [0;1], options);
 
 OPL = rayOutput.rays(rayOutput.finalRayIds(1)).OPL - rayOutput.rays(rayOutput.finalRayIds(2)).OPL; 
@@ -102,4 +101,3 @@ for ii=1:length(wlArray)
     Eout = P_tot*[1;0;0] ;      
     plotJonesVector(Eout(1:2)); % okay for normal incidence
 end
-

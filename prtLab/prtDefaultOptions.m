@@ -7,10 +7,11 @@ end
 
 options = struct();
 options.maxBranches = 256;
-options.minFlux = 0;
+options.minFlux = 100*eps;
 options.minRelativeFlux = 0;
 options.minAmplitude = 0;
 options.keepDiagnostics = true;
+options.encodePropagationPhaseInP = false;
 options.surfaceTolerance = 1e-10;
 options.maxInterceptIterations = 25;
 options.dispatchUnimplemented = "error";

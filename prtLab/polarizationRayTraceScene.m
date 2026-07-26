@@ -42,7 +42,9 @@ for interactionIndex = 1:options.maxInteractions
             continue;
         end
 
-        ray = prtPropagateRayToHit(ray, hit, scene.lambda, true, true);
+        ray = prtPropagateRayToHit( ...
+            ray, hit, scene.lambda, true, ...
+            options.encodePropagationPhaseInP);
         rayTraceData.rays(rayId) = ray;
 
         solid = scene.solids{solidIndex};

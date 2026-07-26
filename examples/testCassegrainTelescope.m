@@ -30,11 +30,11 @@ for ii=1:size(X,1)
         pos_in = [X(ii,jj); Y(ii,jj); -6000];
         rayOutput = polarizationRayTrace(T, k_in, pos_in, E_in);
         if ~isempty(rayOutput.finalRayIds)
-        finalRay = rayOutput.rays(rayOutput.finalRayIds(1));
-        P_tot = finalRay.P;
-        J = transformPtoJones(P_tot, k_in, finalRay.k, coord);
-        Jall(ii,jj,:,:) = J;
-        OPL(ii,jj) = finalRay.OPL;
+            finalRay = selectDominantFinalRay(rayOutput);
+            P_tot = finalRay.P;
+            J = transformPtoJones(P_tot, k_in, finalRay.k, coord);
+            Jall(ii,jj,:,:) = J;
+            OPL(ii,jj) = finalRay.OPL;
         end
     end
 end

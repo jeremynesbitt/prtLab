@@ -103,7 +103,8 @@ for ii = 1:numel(wlNm)
         tQuartz, tGap, tMgF2, ...
         opticAxisQuartz, opticAxisMgF2);
 
-    rayOutput = polarizationRayTrace(T, kIn, xIn, Ein);
+    traceOptions = struct('encodePropagationPhaseInP', true);
+    rayOutput = polarizationRayTrace(T, kIn, xIn, Ein, traceOptions);
     Ptot = coherentFinalP(rayOutput);
     J = transformPtoJones(Ptot, kIn, kIn, coord);
 

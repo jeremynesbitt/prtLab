@@ -3,9 +3,8 @@ addpath(genpath('..'));
 T = exampleAchromaticWavePlateSystem();
 lambda = T.Properties.UserData.lambda ;
 k = [0; sin(20*pi/180); cos(20*pi/180)];
-rayOutput = polarizationRayTrace(T, k, [0;0;0], [0;1]);
-options = rayOutput.options;
-options.minAmplitude = .01;
+options = prtDefaultOptions( ...
+    struct('encodePropagationPhaseInP', true, 'minAmplitude', 0.01));
 rayOutput = polarizationRayTrace(T, k, [0;0;0], [0;1], options);
 
 OPL = rayOutput.rays(rayOutput.finalRayIds(1)).OPL - rayOutput.rays(rayOutput.finalRayIds(2)).OPL; 

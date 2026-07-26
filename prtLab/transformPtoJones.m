@@ -1,4 +1,4 @@
-function Jout = transformPtoJones(P, ki, kj, coordIn, coordOut)
+function [Jout, xj, yj] = transformPtoJones(P, ki, kj, coordIn, coordOut)
 %TRANSFORMPTOJONES Convert a 3D P matrix to a 2D Jones matrix.
 %
 %   Jout = transformPtoJones(P, ki, kj, coordIn)
