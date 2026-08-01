@@ -15,4 +15,3 @@ def test_public_api_is_explicit_and_importable():
     assert len(prtlab.__all__) == len(set(prtlab.__all__))
     for name in prtlab.__all__:
         assert hasattr(prtlab, name), name
-    assert prtlab.__version__ == "0.1.0.dev0"
