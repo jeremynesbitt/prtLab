@@ -41,9 +41,10 @@ def main() -> None:
         environment["PYTHONPATH"] = str(install_directory)
         smoke_code = """
 import prtlab
+from importlib.metadata import version
 from prtlab import polarization_ray_trace, quarter_wave_plate_system
 
-assert prtlab.__version__ == "0.1.0.dev0"
+assert prtlab.__version__ == version("prtLab")
 result = polarization_ray_trace(
     quarter_wave_plate_system(), [0, 0, 1], [0, 0, 0], [0, 1]
 )
