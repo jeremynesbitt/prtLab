@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function interaction = traceIsotropicToUniaxial(interaction, mediumIn, mediumOut, ray, hit, normal, options)
 %TRACEISOTROPICTOUNIAXIAL Placeholder for isotropic-to-uniaxial tracing.
 % Jeremy Nesbitt

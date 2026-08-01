@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function solid = prtCreateExtrudedPolygonSolid(name, verticesYZ, faceNames, ...
         width, outside, material, lambda, lambdaUnits)
 %PRTCREATEEXTRUDEDPOLYGONSOLID Build a homogeneous polygon solid extruded in x.

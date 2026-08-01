@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "dataFile": "uniaxialRayTraceBaseline.csv",
+  "referenceImplementation": "MATLAB prtLab",
+  "referenceCommit": "2682ac1deb00040ee59f48b8516a962a6b6a24ff",
+  "generator": "tests/uniaxialRayTraceTest.m",
+  "generatorCommand": "uniaxialRayTraceTest(\"generate\")",
+  "wavelength": 0.633,
+  "lengthUnits": "um",
+  "absoluteTolerance": 1e-12,
+  "notes": "Eigenvector signs and rotations of the reflected SVD basis are compared through invariant magnitudes."
+}

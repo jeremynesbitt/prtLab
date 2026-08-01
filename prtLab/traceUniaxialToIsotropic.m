@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function interaction = traceUniaxialToIsotropic(interaction, mediumIn, mediumOut, ray, hit, normal, options)
 %TRACEUNIAXIALTOISOTROPIC trace rays from uniaxial to isotropic materials
 %Based on PLAOS Section 19.7.3

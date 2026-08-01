@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function [n_ref, k_ref, q_ref] = extraordinaryReflectedQ(q_inc, ada, opticAxis, nO, nE)
 % this func solves Fresnel's quartic equation.
 

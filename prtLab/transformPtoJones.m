@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function [Jout, xj, yj] = transformPtoJones(P, ki, kj, coordIn, coordOut)
 %TRANSFORMPTOJONES Convert a 3D P matrix to a 2D Jones matrix.
 %

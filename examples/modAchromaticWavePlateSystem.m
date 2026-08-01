@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function T = modAchromaticWavePlateSystem(lambda, nO1, nE1, nO2, nE2, t1, tgap, t2, opticAxis_1, opticAxis_2)
 %modOpticallyContactedWavePlateSystem modular optically contacted
 %waveplate created for characterization vs wavelength.

@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function child = makeChildTemplate(parentRay, hit, normal, mediumOut, mode, branchType)
 %MAKECHILDTEMPLATE Build a child ray placeholder from a parent ray.
 

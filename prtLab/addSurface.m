@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function T = addSurface(T, Radius, Thickness, SurfaceType, SurfaceData, MaterialType, IndexData, AxisData, CoatingData)
 %ADDSURFACE Add one surface row to a prtLab optical system table.
 %

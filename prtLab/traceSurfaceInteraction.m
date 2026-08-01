@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function interaction = traceSurfaceInteraction(T, surfaceIndex, ray, hit, normal, options)
 %TRACESURFACEINTERACTION Dispatch one ray/surface interaction.
 

@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 %EXAMPLERIGHTTRIANGULARCRYSTALPRISM Build and display a crystal prism.
 
 lambda = 0.633; % um

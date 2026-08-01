@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function rayTraceData = polarizationRayTrace(T, k_inc, x_inc, Ein, options)
 %POLARIZATIONRAYTRACE Trace a ray through a prtLab optical system.
 %

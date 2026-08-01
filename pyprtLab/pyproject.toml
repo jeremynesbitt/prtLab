@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prtLab"
+dynamic = ["version"]
+description = "Polarization ray tracing for isotropic and anisotropic optical systems"
+readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{name = "Jeremy Nesbitt"}]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "matplotlib>=3.8",
+]
+
+[project.urls]
+Homepage = "https://github.com/jeremynesbitt/prtLab"
+Repository = "https://github.com/jeremynesbitt/prtLab"
+Issues = "https://github.com/jeremynesbitt/prtLab/issues"
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.2",
+    "ipykernel>=7",
+    "pytest>=8",
+    "ruff>=0.6",
+    "setuptools>=69",
+    "wheel>=0.43",
+]
+docs = [
+    "jupyter>=1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "prtlab._version.__version__"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"

@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function scene = createGlanTaylorPolarizerScene(indexData, options)
 %CREATEGLANTAYLORPOLARIZERSCENE Create two crystal prisms with an air gap.
 %

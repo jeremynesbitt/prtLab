@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function h = plotPrtSystem3D(T, rayOutputs, options)
 %PLOTPRTSYSTEM3D Plot a prtLab system, ray paths, and polarization glyphs.
 %

@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function plotBasisVectorsOnSphere(k_grid, x_loc, y_loc, opts)
 % plotBasisVectorsOnSphere - Plot local basis vectors on unit propagation sphere
 %

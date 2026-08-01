@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function [x_loc, y_loc] = dipoleBasisVectors(k, a_loc)
 % dipoleBasisVectors - Compute dipole local coordinates on unit sphere
 %
@@ -34,10 +38,13 @@ mag = sqrt(sum(axk.^2, 2));          % Nx1
 tol = 1e-6;
 good = mag > tol;
 
-% Regular points: Eq 11.5
-x_loc(good, :) = axk(good, :) ./ mag(good);
-% y_loc = k x x_loc
-y_loc(good, :) = cross(k(good, :), x_loc(good, :), 2);
+% Regular points: Eq 11.5. Guard the empty selection because MATLAB cannot
+% implicitly expand a 0x1 divisor across a 0x3 array.
+if any(good)
+    x_loc(good, :) = axk(good, :) ./ mag(good);
+    % y_loc = k x x_loc
+    y_loc(good, :) = cross(k(good, :), x_loc(good, :), 2);
+end
 
 % Singular points: pick arbitrary orthonormal basis in transverse plane
 if any(~good)

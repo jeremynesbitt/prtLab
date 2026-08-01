@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function child = buildPolarizedChild(parentRay, hit, normal, medium, options)
 %BUILDPOLARIZEDCHILD Build a complete ray child from modal branch data.
 

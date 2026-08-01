@@ -1,9 +1,11 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function interaction = traceUniaxialToUniaxial(interaction, mediumIn, mediumOut, ray, hit, normal, options)
 %TRACEUNIAXIALTOUNIAXIAL trace rays from uniaxial to uniaxial materials
 %Based on PLAOS Section 19.7.4
 
-
-deg = pi/180;
 
 k_inc = interaction.incident.k;
 S_inc = interaction.incident.S;
@@ -37,92 +39,24 @@ E_n = E_n/norm(E_n);
 
 
 
-% The analytic solutions below require alpha to be in the yz plane.
-% rotate the coordinate system if needed to enforce this.
-[opticAxis_t, Rz] = rotateToZeroX(opticAxis_t);
-
-% Definition of alpha consistent with analytic solution
-alpha = atan(opticAxis_t(2)/opticAxis_t(3));
-
-nInc = n_inc; % either o or e n parsed above.
-
-% Rotate kinc and the surface normal if alpha was rotated
-kinc = Rz*k_inc;
-ada = Rz*interaction.normal;
-
-% We know incident medium is isotropic so can define epsilon using
-% identity matrix
-epsilon = nInc^2*eye(3,3);
-
-% Here assuming uniaxial with alpha paramterizing the crystal axis.
-epsilonP = [nO_t.^2, 0, 0 ;  ... 
- 0, (nO_t*cos(alpha))^2+(nE_i*sin(alpha))^2, 0.5*(nE_t.^2-nO_t.^2)*sin(2*alpha) ; ...
- 0, 0.5*(nE_t.^2-nO_t.^2)*sin(2*alpha), (nE_t*cos(alpha)).^2+(nO_t*sin(alpha)).^2];
-
-
-% ThetaX/Y in the rotated coordinate system
-thetaX = atan(kinc(1)/ kinc(3));
-thetaY = atan(kinc(2)/ kinc(3));
-
-% I solved for the analytically using mathematica using 
-% PLAOS eqns 19.17 and 19.18.
-np = calcNp(thetaY,thetaX,alpha,nO_t,nE_t);
-
-
-% Transmission waves
-k_tO = snell_vector(kinc, ada, nInc, nO_t);
-k_tE = snell_vector(kinc, ada, nInc, np);
-
-
-
-
-% Need to compute S
-
-M_tO = calcM(nO_t,nE_t,nO_t,thetaX,thetaY, alpha);
-
-[U,S,V] =svd(M_tO);
-
-% Compute E, H, S using SVD.
-E_O = V(:,end);
-
-K_tO = makeK(k_tO);
-
-H_O = nO_t*K_tO*E_O;
-
-S_O = cross(E_O,H_O);
-S_O = S_O/norm(S_O);
-
-% Go back to global coordinates now that we have ne
-k_tO = inv(Rz)*k_tO;
-S_O  = inv(Rz)*S_O;
-E_O  = inv(Rz)*E_O;
-H_O  = inv(Rz)*H_O;
-
-
-%% Extraordinary result
-% same as ordinary but use np(aka ne) as the index
-ne = np;
-M_tE = calcM(nO_t,nE_t,np,thetaX,thetaY,alpha);
-[U,S,V] =svd(M_tE);
-
-E_E = V(:,end);
-
-K_tE = makeK(k_tE);
-
-H_E = ne*K_tE*E_E;
-S_E = cross(E_E,H_E);
-S_E = S_E/norm(S_E);
-
-% Go back to global coordinates
-k_tE = inv(Rz)*k_tE;
-S_E  = inv(Rz)*S_E;
-E_E  = inv(Rz)*E_E;
-H_E  = inv(Rz)*H_E;
-
-
-% Go back to global coordinates before reflection
-kinc = inv(Rz)*kinc;
-ada = interaction.normal;
+% Conserve the tangential wavevector and solve the two output-medium
+% dielectric eigenconditions directly. This remains valid for arbitrary
+% interface normals and optic-axis orientations.
+qInc = n_inc*k_inc;
+qTangential = qInc - dot(qInc, ada)*ada;
+[modeO, modeE] = uniaxialModesFromTangentialQ( ...
+    qTangential, ada, nO_t, nE_t, opticAxis_t, 1);
+k_tO = modeO.k;
+S_O = modeO.S;
+E_O = modeO.E;
+H_O = modeO.H;
+k_tE = modeE.k;
+S_E = modeE.S;
+E_E = modeE.E;
+H_E = modeE.H;
+ne = modeE.phaseIndex;
+epsilonP = nO_t^2*eye(3) + ...
+    (nE_t^2 - nO_t^2)*(opticAxis_t*opticAxis_t.');
 
 
 %% Reflection 
@@ -139,7 +73,6 @@ a = opticAxisIn(:) / norm(opticAxisIn); % norm here is unnecessary since it is h
 epsilon = nO_i^2*eye(3) + (nE_i^2 - nO_i^2)*(a*a.');
 
 % Compute o and e reflected waves while conserving tangential q.
-qInc = n_inc*k_inc;
 [n_ref, k_ref, q_ref] = extraordinaryReflectedQ( ...
     qInc, ada, opticAxisIn, nO_i, nE_i);
 qParallel = qInc - dot(qInc,ada)*ada;
@@ -155,7 +88,7 @@ det(M_re) ;% should be close to eps
 [Utmp,Stmp,V] = svd(M_re);
 % if opticAxis, ada, and k_inc all in same direction, have a degeneracy
 % that needs to be handled.
-if all(opticAxis_t == k_inc) && all(opticAxisIn == ada)
+if all(opticAxisIn == k_inc) && all(opticAxisIn == ada)
    E_re = V(:,end-1);
 else
    E_re = V(:,end);
@@ -302,7 +235,7 @@ childO = buildPolarizedChild(ray, hit, normal, mediumOut, ...
     FluxNormal=interaction.normal, PropagationProjector=SD_o, ...
     Metadata=struct( ...
     'epsilon', epsilonP, ...
-    'opticAxis', inv(Rz)*opticAxis_t));
+    'opticAxis', opticAxis_t));
 
 
 childE = buildPolarizedChild(ray, hit, normal, mediumOut, ...
@@ -314,7 +247,7 @@ childE = buildPolarizedChild(ray, hit, normal, mediumOut, ...
     PropagationProjector=SD_e, Metadata=struct( ...
     'n_SE', ne*k_tE'*S_E, ...
     'epsilon', epsilonP, ...
-    'opticAxis', inv(Rz)*opticAxis_t));
+    'opticAxis', opticAxis_t));
 
 interaction.children = [childO; childE];
 
@@ -344,6 +277,40 @@ reflected_e = buildPolarizedChild(ray, hit, normal, mediumIn, ...
     'epsilon', epsilon, 'opticAxis', opticAxisIn));
 interaction.children = ...
     [interaction.children; reflected_o; reflected_e];
+
+interaction.frames.Oin = Oin;
+interaction.frames.OoutOrdinary = Oout_o;
+interaction.frames.OoutExtraordinary = Oout_e;
+interaction.frames.OrefOrdinary = OrefO;
+interaction.frames.OrefExtraordinary = OrefE;
+interaction.P = struct( ...
+    'transmittedOrdinary', P_to, ...
+    'transmittedExtraordinary', P_te, ...
+    'reflectedOrdinary', P_ro, ...
+    'reflectedExtraordinary', P_re);
+interaction.Q = struct( ...
+    'transmittedOrdinary', Q_o, ...
+    'transmittedExtraordinary', Q_e, ...
+    'reflectedOrdinary', QrefO, ...
+    'reflectedExtraordinary', QrefE);
+interaction.coefficients = struct( ...
+    'Am', Am, ...
+    'Ap', Ap, ...
+    'transmittedOrdinary', Am(1), ...
+    'transmittedExtraordinary', Am(2), ...
+    'reflectedOrdinary', Am(3), ...
+    'reflectedExtraordinary', Am(4));
+interaction.diagnostics = struct( ...
+    'F', F, ...
+    'Cm', Cm, ...
+    'Cn', Cn, ...
+    'boundaryResidual_m', F*Am - Cm, ...
+    'boundaryResidual_n', F*Ap - Cn, ...
+    'Iin', Iin, ...
+    'IinField', IinField, ...
+    'totalFluxRatio', transmissionFluxRatio, ...
+    'totalFluxRatioField', ...
+        sum([interaction.children.flux])/IinField);
 
 end
 

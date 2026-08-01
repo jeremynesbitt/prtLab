@@ -1,0 +1,26 @@
+# Operating-system metadata
+.DS_Store
+
+# MATLAB editor autosaves
+*.asv
+
+# Python virtual environments
+.venv/
+**/.venv/
+
+# Python bytecode and tool caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Coverage output
+.coverage
+.coverage.*
+htmlcov/
+
+# Python package build output
+build/
+dist/
+*.egg-info/

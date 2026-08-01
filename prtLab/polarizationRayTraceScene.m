@@ -1,3 +1,7 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
 function rayTraceData = polarizationRayTraceScene(scene, k_inc, x_inc, Ein, options)
 %POLARIZATIONRAYTRACESCENE Trace a branched ray through multiple solids.
 %

@@ -1,0 +1,169 @@
+% Copyright (c) 2026 Jeremy Nesbitt. All rights reserved.
+% Use of this source code is governed by a BSD-style license that can be
+% found in the LICENSE file.
+
+function outputPath = generateAnisotropicInterfaceBaselines(outputPath)
+%GENERATEANISOTROPICINTERFACEBASELINES Export MATLAB interface references.
+%
+% The fixture exercises uniaxial-to-isotropic and uniaxial-to-uniaxial
+% boundary conditions independently of the sequential branch scheduler.
+
+if nargin < 1
+    repositoryRoot = fileparts(fileparts(mfilename('fullpath')));
+    outputPath = fullfile(repositoryRoot, 'pyprtLab', 'tests', ...
+        'baselines', 'anisotropicInterfaceBaselines.json');
+end
+
+repositoryRoot = fileparts(fileparts(mfilename('fullpath')));
+addpath(fullfile(repositoryRoot, 'prtLab'));
+
+cases = [ ...
+    makeCase("normal", [0;0;1], [1;0], [1;0;0], [0;1;0]); ...
+    makeCase("oblique", calcKFromThetaXThetaY(20, 10), ...
+        [1;1]/sqrt(2), prtNorm([0.35;-0.60;0.72]), ...
+        prtNorm([-0.50;0.40;0.77]))];
+
+fixture = struct();
+fixture.schemaVersion = 1;
+fixture.referenceImplementation = "MATLAB prtLab";
+fixture.referenceCommit = "2682ac1deb00040ee59f48b8516a962a6b6a24ff";
+fixture.referenceWorkingTreeChanges = [ ...
+    "prtLab/uniaxialModesFromTangentialQ.m", ...
+    "prtLab/traceUniaxialToUniaxial.m"];
+fixture.generator = "tests/generateAnisotropicInterfaceBaselines.m";
+fixture.wavelength = 0.633;
+fixture.lengthUnits = "um";
+fixture.absoluteTolerance = 5e-10;
+fixture.cases = cases;
+
+outputFolder = fileparts(outputPath);
+if ~isfolder(outputFolder)
+    mkdir(outputFolder);
+end
+fileId = fopen(outputPath, 'w');
+cleanup = onCleanup(@() fclose(fileId));
+fprintf(fileId, '%s\n', jsonencode(fixture, PrettyPrint=true));
+fprintf('Wrote %s\n', outputPath);
+end
+
+
+function result = makeCase(name, kIncident, inputField, axis1, axis2)
+n1 = struct('nO', 1.656, 'nE', 1.485);
+n2 = struct('nO', 1.603, 'nE', 1.497);
+air = struct('n', 1.0);
+bare = struct('type', 'bare');
+
+systemU2I = createOpticalSystem(0.633);
+systemU2I = addSurface(systemU2I, Inf, 0, "plane", struct(), ...
+    "isotropic", air, struct(), bare);
+systemU2I = addSurface(systemU2I, Inf, 1, "plane", struct(), ...
+    "uniaxial", n1, struct('opticAxis', axis1), bare);
+systemU2I = addSurface(systemU2I, Inf, 0, "plane", struct(), ...
+    "isotropic", air, struct(), bare);
+
+systemU2U = createOpticalSystem(0.633);
+systemU2U = addSurface(systemU2U, Inf, 0, "plane", struct(), ...
+    "isotropic", air, struct(), bare);
+systemU2U = addSurface(systemU2U, Inf, 1, "plane", struct(), ...
+    "uniaxial", n1, struct('opticAxis', axis1), bare);
+systemU2U = addSurface(systemU2U, Inf, 0, "plane", struct(), ...
+    "uniaxial", n2, struct('opticAxis', axis2), bare);
+
+options = prtDefaultOptions();
+initialRay = prtMakeInitialRay(kIncident, [0;0;0], inputField, ...
+    "isotropic", air, struct('currentVertexZ', 0));
+entry = traceSurfaceInteraction(systemU2I, 1, initialRay, ...
+    [0;0;0], [0;0;1], options);
+incidentModes = entry.children(1:2);
+
+u2i = [];
+u2u = [];
+for modeIndex = 1:numel(incidentModes)
+    ray = incidentModes(modeIndex);
+    ray.position = [0;0;1];
+    u2iInteraction = traceSurfaceInteraction(systemU2I, 2, ray, ...
+        ray.position, [0;0;1], options);
+    u2uInteraction = traceSurfaceInteraction(systemU2U, 2, ray, ...
+        ray.position, [0;0;1], options);
+    if modeIndex == 1
+        u2i = serializeInteraction(u2iInteraction);
+        u2u = serializeInteraction(u2uInteraction);
+    else
+        u2i(end+1) = serializeInteraction(u2iInteraction); %#ok<AGROW>
+        u2u(end+1) = serializeInteraction(u2uInteraction); %#ok<AGROW>
+    end
+end
+
+result = struct( ...
+    'name', name, ...
+    'kIncident', packNumeric(kIncident), ...
+    'inputField', packNumeric(inputField), ...
+    'axis1', packNumeric(axis1), ...
+    'axis2', packNumeric(axis2), ...
+    'index1', n1, ...
+    'index2', n2, ...
+    'uniaxialToIsotropic', u2i, ...
+    'uniaxialToUniaxial', u2u);
+end
+
+
+function record = serializeInteraction(interaction)
+children = serializeChild(interaction.children(1));
+for childIndex = 2:numel(interaction.children)
+    children(end+1) = serializeChild(interaction.children(childIndex)); %#ok<AGROW>
+end
+
+record = struct( ...
+    'incidentMode', interaction.incident.mode, ...
+    'incidentK', packNumeric(interaction.incident.k), ...
+    'incidentS', packNumeric(interaction.incident.S), ...
+    'incidentModeE', packNumeric(interaction.incident.modeE), ...
+    'incidentModeH', packNumeric(interaction.incident.modeH), ...
+    'incidentFieldE', packNumeric(interaction.incident.fieldE), ...
+    'incidentFieldH', packNumeric(interaction.incident.fieldH), ...
+    'children', children);
+
+if isfield(interaction.coefficients, 'Am')
+    record.coefficients = packNumeric(interaction.coefficients.Am);
+else
+    record.coefficients = packNumeric([]);
+end
+if isfield(interaction.diagnostics, 'boundaryResidual_m')
+    record.boundaryResidual = ...
+        packNumeric(interaction.diagnostics.boundaryResidual_m);
+else
+    record.boundaryResidual = packNumeric([]);
+end
+end
+
+
+function record = serializeChild(child)
+record = struct( ...
+    'mode', child.mode, ...
+    'branchType', child.branchType, ...
+    'active', child.active, ...
+    'k', packNumeric(child.k), ...
+    'S', packNumeric(child.S), ...
+    'modeE', packNumeric(child.modeE), ...
+    'modeH', packNumeric(child.modeH), ...
+    'fieldE', packNumeric(child.fieldE), ...
+    'fieldH', packNumeric(child.fieldH), ...
+    'P', packNumeric(child.P), ...
+    'Q', packNumeric(child.Q), ...
+    'O', packNumeric(child.O), ...
+    'amplitude', packNumeric(child.amplitude), ...
+    'flux', packNumeric(child.flux), ...
+    'index', packNumeric(child.metadata.n), ...
+    'interfaceP', packNumeric(child.metadata.P_interface));
+
+if isfield(child.metadata, 'n_SE')
+    record.nSE = packNumeric(child.metadata.n_SE);
+else
+    record.nSE = packNumeric([]);
+end
+end
+
+
+function packed = packNumeric(value)
+packed = struct('real', real(value), 'imag', imag(value));
+end
